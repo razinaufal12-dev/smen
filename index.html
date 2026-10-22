@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Fondasi Belajar</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#141519;--card:#1d1f24;--ink:#f3f3f1;--mute:#9a9ca5;--line:#f3f3f1;
+--S:#a974e0;--A:#3fbf8a;--B:#4a9be8;--C:#e0a62f;--D:#e5483a;--x:#6b6e78}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Archivo",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+h1{font:400 44px/1.1 "Archivo Black","Archivo",sans-serif;margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 14px}
+hr{border:0;border-top:4px solid var(--ink);margin:0 0 18px}
+.top{display:grid;grid-template-columns:1fr 200px auto;gap:10px}
+@media(max-width:700px){.top{grid-template-columns:1fr}h1{font-size:32px}}
+input[type=text],select{background:var(--bg);color:var(--ink);border:3px solid var(--ink);padding:11px 12px;font:inherit;border-radius:0;min-width:0}
+input::placeholder{color:var(--mute)}
+button{background:var(--ink);color:var(--bg);border:3px solid var(--ink);font:700 15px "Archivo",sans-serif;padding:11px 20px;cursor:pointer;border-radius:0}
+button.alt{background:transparent;color:var(--ink)}
+:focus-visible{outline:3px solid var(--S);outline-offset:2px}
+.status{font-weight:700;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.status.err #st{color:var(--D)}
+.status label{font-weight:400;color:var(--mute);font-size:13px;display:flex;gap:6px;align-items:center}
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;margin-top:14px;align-items:start}
+@media(max-width:860px){.main{grid-template-columns:1fr}}
+.chart{position:relative}
+#svg{width:100%;height:auto;display:block}
+.stamp{position:absolute;top:0;right:0;width:96px;transform:rotate(7deg);border:5px solid var(--g);border-radius:14px;background:var(--bg);text-align:center;overflow:hidden;color:var(--g)}
+.stamp b{display:block;font:400 54px/1.1 "Archivo Black",sans-serif}
+.stamp span{display:block;background:var(--g);color:#fff;font-size:11px;font-weight:700;padding:2px 0}
+.tbox{border:3px solid var(--ink);background:var(--card);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th{background:#eceef0;color:#141519;font-size:12.5px;letter-spacing:.04em;padding:9px 8px;text-align:right}
+td{padding:8px;text-align:right;border-bottom:1px dashed #5b5e68}
+th:first-child,td:first-child{text-align:left;padding-left:10px;white-space:nowrap}
+tr.gh td{font:400 13px "Archivo Black",sans-serif;letter-spacing:.05em;border-bottom:1px dashed #5b5e68;padding-top:10px}
+tbody tr:last-child td{border-bottom:0}
+td b{font-weight:700}
+.chip{display:inline-block;min-width:26px;text-align:center;color:#fff;font-weight:700;border-radius:3px;padding:0 6px}
+.G-S{background:var(--S)}.G-A{background:var(--A)}.G-B{background:var(--B)}.G-C{background:var(--C)}.G-D{background:var(--D)}.G-x{background:var(--x)}
+.note{font-size:13px;color:var(--mute);margin:8px 0 0}
+details{border:3px solid var(--ink);background:var(--card);margin-top:16px;padding:12px 16px}
+summary{font-weight:700;cursor:pointer}
+details[open] summary{margin-bottom:10px}
+code{background:var(--bg);padding:1px 5px;font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.wts{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;max-width:320px}
+.wts input{width:64px;padding:5px 6px;border-width:2px;text-align:right}
+ol,ul{padding-left:20px;margin:6px 0}
+p{margin:6px 0}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Dashboard Fondasi Belajar</h1>
+<p class="sub">Membaca langsung dari tracker Google Sheet sembilan mata kuliah. Sumber data tersimpan, tidak perlu ditempel ulang.</p>
+<hr>
+
+<div class="top">
+  <input type="text" id="src" placeholder="Tempel link Google Sheet, ID, atau URL Apps Script" aria-label="Sumber data">
+  <select id="metric" aria-label="Ukuran sumbu">
+    <option value="comp">Ringkasan</option>
+    <option value="pre">Skor Pre-test</option>
+    <option value="post">Skor Post-test</option>
+    <option value="h7">Skor H+7</option>
+    <option value="ret">Retention rate</option>
+    <option value="gain">Gain ternormalisasi</option>
+  </select>
+  <button id="btnLoad">Hubungkan</button>
+</div>
+<div class="status" id="statusbar"><span id="st">Belum terhubung.</span>
+  <label><input type="checkbox" id="auto" checked> Perbarui otomatis tiap 30 detik</label></div>
+
+<div class="main">
+  <div class="chart">
+    <div class="stamp" id="stamp" style="--g:var(--x)"><b id="oG">–</b><span>PERINGKAT</span></div>
+    <svg id="svg" viewBox="0 0 760 640" role="img" aria-label="Grafik radar sembilan mata kuliah"></svg>
+    <p class="note" id="oN" style="text-align:center"></p>
+  </div>
+  <div>
+    <div class="tbox"><table>
+      <thead><tr><th>SUMBU</th><th>PRE</th><th>POST</th><th>H+7</th><th>SKOR</th><th>RANK</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <p class="note">Pre, Post, H+7, dan Skor dalam persen (0–100). Skor adalah skor komposit yang menentukan peringkat.</p>
+  </div>
+</div>
+
+<details>
+  <summary>Cara menghubungkan</summary>
+  <p><b>Agar realtime, data harus ada di Google Sheets asli</b> (Berkas → Simpan sebagai Google Spreadsheet), bukan file .xlsx yang hanya diunggah ke Drive.</p>
+  <div class="two">
+    <div>
+      <p><b>Cara A: link langsung</b></p>
+      <ol>
+        <li>Bagikan sheet: Bagikan → Siapa saja yang memiliki link → Pelihara.</li>
+        <li>Tempel link atau ID di kolom atas, klik Hubungkan. Tersimpan otomatis di browser ini.</li>
+      </ol>
+      <p><b>Cara B: Apps Script (paling andal)</b></p>
+      <ol>
+        <li>Di Sheets: Ekstensi → Apps Script, tempel kode di bawah.</li>
+        <li>Terapkan → Deployment baru → Aplikasi web, akses "Siapa saja".</li>
+        <li>Tempel URL berakhiran <code>/exec</code> di kolom atas, klik Hubungkan.</li>
+      </ol>
+<pre style="background:var(--bg);padding:10px;overflow-x:auto;font-size:12.5px">function doGet() {
+  const o = {};
+  SpreadsheetApp.getActiveSpreadsheet().getSheets()
+    .forEach(s => o[s.getName()] = s.getDataRange().getValues());
+  return ContentService.createTextOutput(JSON.stringify(o))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+    </div>
+    <div>
+      <p><b>Cara C: file Excel di komputer</b></p>
+      <p>Chrome atau Edge di komputer. Halaman mengecek file tiap 3 detik, jadi simpan (Ctrl+S) setelah mengisi.</p>
+      <div class="btns">
+        <button class="alt" id="btnWatch" type="button">Pantau file .xlsx</button>
+        <button class="alt" id="btnUp" type="button">Unggah sekali</button>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls" hidden>
+      <p class="note">Nama tab harus persis: <span id="tabs"></span>. Susunan kolom tiap tab sama dengan tab K3.</p>
+    </div>
+  </div>
+</details>
+
+<details>
+  <summary>Cara menghitung peringkat D–S</summary>
+  <div class="two"><div>
+    <p><b>1. Skor tiap tahap</b> (digabung dari semua sesi, bukan rata-rata persen):<br><code>Skor = Σ benar ÷ Σ soal × 100</code></p>
+    <p><b>2. Retention rate</b> (sesi yang punya Post dan H+7):<br><code>H+7 ÷ Post × 100</code>, maksimum 100</p>
+    <p><b>3. Gain ternormalisasi</b> (sesi yang punya Pre dan Post):<br><code>(Post − Pre) ÷ (100 − Pre) × 100</code>, minimum 0</p>
+    <p><b>4. Skor komposit</b>:<br><code>Σ(bobot × komponen) ÷ Σ bobot yang tersedia</code></p>
+    <ul class="note">
+      <li>Baris dihitung hanya bila "Benar" terisi.</li>
+      <li>Komponen yang belum ada dibuang, bobot sisanya dinormalkan.</li>
+      <li>Peringkat S wajib punya data H+7, tanpa itu mentok di A.</li>
+      <li>Tanpa Post-test, mata kuliah belum diberi peringkat.</li>
+      <li>Peringkat keseluruhan memakai rata-rata komposit mata kuliah yang sudah dinilai.</li>
+    </ul></div>
+    <div>
+      <p><b>Bobot komposit (bisa diubah)</b></p><div class="wts" id="wts"></div><p class="note" id="wsum"></p>
+      <p style="margin-top:14px"><b>Batas skor komposit</b></p><div class="wts" id="ths"></div>
+      <p class="note">D berada di bawah batas C.</p>
+    </div></div>
+</details>
+</div>
+
+<script>
+const SUMBER={sheetId:"1keVnivDcqN4-wgv_yKOJtXbU8hTAMTDt",gasUrl:""};
+const GROUPS=[["SAINS DASAR",["Kalkulus Dasar","Fisika","Kimia","Biologi"]],["REKAYASA",["Pengantar Mekatronika","Teknik Digital","Algoritma Pemrograman","K3"]],["UMUM",["PAI"]]];
+const MK=GROUPS.flatMap(g=>g[1]);
+const W={post:25,h7:40,ret:20,gain:15};
+const WL={post:"Skor Post-test",h7:"Skor H+7",ret:"Retention rate",gain:"Gain-N"};
+const T={S:85,A:70,B:55,C:40};
+const $=id=>document.getElementById(id);
+let RAW={},timer,watchT;
+try{Object.assign(SUMBER,JSON.parse(localStorage.getItem("radar_sumber")||"{}"))}catch(e){}
+$("tabs").textContent=MK.join(", ");
+
+const fmt=(v,d=1)=>v==null?"–":v.toFixed(d).replace(".",",");
+const num=x=>{if(x==null)return null;if(typeof x==="number")return isFinite(x)?x:null;let s=String(x).trim();if(s==="")return null;if(s.includes(",")&&!s.includes("."))s=s.replace(",",".");else s=s.replace(/,/g,"");const n=parseFloat(s);return isNaN(n)?null:n};
+function csv(t){const r=[];let row=[],c="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}else if(ch==='"')q=true;else if(ch===","){row.push(c);c=""}else if(ch==="\n"){row.push(c);r.push(row);row=[];c=""}else if(ch!=="\r")c+=ch}row.push(c);r.push(row);return r}
+
+function summarize(rows){
+  const h=rows.findIndex(r=>r.some(c=>String(c).trim()==="Soal Pre"));
+  if(h<0)return null;
+  const hd=rows[h].map(c=>String(c).trim()),ix=n=>hd.indexOf(n);
+  const k={ps:ix("Soal Pre"),pb:ix("Benar Pre"),qs:ix("Soal Post"),qb:ix("Benar Post"),hs:ix("Soal H+7"),hb:ix("Benar H+7")};
+  const a={pre:[0,0],post:[0,0],h7:[0,0],gp:[0,0,0],rt:[0,0,0],n:0};
+  for(const r of rows.slice(h+1)){
+    const g=i=>i<0?null:num(r[i]);
+    const ps=g(k.ps),pb=g(k.pb),qs=g(k.qs),qb=g(k.qb),hs=g(k.hs),hb=g(k.hb);
+    const P=ps>0&&pb!=null,Q=qs>0&&qb!=null,H=hs>0&&hb!=null;
+    if(!P&&!Q&&!H)continue;
+    a.n++;
+    if(P){a.pre[0]+=pb;a.pre[1]+=ps}
+    if(Q){a.post[0]+=qb;a.post[1]+=qs}
+    if(H){a.h7[0]+=hb;a.h7[1]+=hs}
+    if(P&&Q){a.gp[0]+=pb/ps*100;a.gp[1]+=qb/qs*100;a.gp[2]++}
+    if(Q&&H){a.rt[0]+=qb/qs*100;a.rt[1]+=hb/hs*100;a.rt[2]++}
+  }
+  return a;
+}
+function grade(v,hasH7){let g=v>=T.S?"S":v>=T.A?"A":v>=T.B?"B":v>=T.C?"C":"D";if(g==="S"&&!hasH7)g="A";return g}
+function metrics(a){
+  const p=x=>x[1]>0?x[0]/x[1]*100:null;
+  const m={pre:p(a.pre),post:p(a.post),h7:p(a.h7),ret:null,gain:null,comp:null,grade:"–"};
+  if(a.rt[0]>0)m.ret=Math.min(100,a.rt[1]/a.rt[0]*100);
+  if(a.gp[2]>0){const pre=a.gp[0]/a.gp[2],post=a.gp[1]/a.gp[2];if(pre<100)m.gain=Math.max(0,(post-pre)/(100-pre)*100)}
+  let s=0,w=0;
+  for(const key of ["post","h7","ret","gain"])if(m[key]!=null){s+=W[key]*m[key];w+=W[key]}
+  if(m.post!=null&&w>0){m.comp=s/w;m.grade=grade(m.comp,m.h7!=null)}
+  return m;
+}
+
+function radar(M,key){
+  const cx=380,cy=320,R=190,N=MK.length;
+  const ang=i=>-Math.PI/2+i*2*Math.PI/N;
+  const pt=(i,v)=>[cx+R*v/100*Math.cos(ang(i)),cy+R*v/100*Math.sin(ang(i))];
+  const poly=v=>MK.map((_,i)=>pt(i,v).map(n=>n.toFixed(1)).join(",")).join(" ");
+  let s="";
+  [20,40,60,80].forEach(v=>s+=`<polygon points="${poly(v)}" fill="none" stroke="#5b5e68" stroke-width="1"/>`);
+  s+=`<polygon points="${poly(T.S)}" fill="none" stroke="#a974e0" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+  MK.forEach((_,i)=>{const[x,y]=pt(i,100);s+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#5b5e68"/>`});
+  s+=`<polygon points="${poly(100)}" fill="none" stroke="#f3f3f1" stroke-width="3"/>`;
+  const vals=M.map(x=>x.m&&x.m[key]!=null?x.m[key]:0);
+  const pp=vals.map((v,i)=>pt(i,v).map(n=>n.toFixed(1)).join(",")).join(" ");
+  s+=`<polygon points="${pp}" fill="rgba(243,243,241,.14)" stroke="#f3f3f1" stroke-width="3" stroke-linejoin="round"/>`;
+  vals.forEach((v,i)=>{const[x,y]=pt(i,v),m=M[i].m;
+    s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#f3f3f1" stroke="#141519" stroke-width="2.5"><title>${MK[i]}: ${m&&m[key]!=null?fmt(m[key]):"belum ada data"}</title></circle>`});
+  s+=`<circle cx="${cx}" cy="${cy}" r="4" fill="#141519" stroke="#f3f3f1" stroke-width="2"/>`;
+  MK.forEach((n,i)=>{
+    const c=Math.cos(ang(i)),sn=Math.sin(ang(i)),rr=R+20,x=cx+rr*c,y0=cy+rr*sn;
+    const anchor=c>0.3?"start":c<-0.3?"end":"middle";
+    const w=n.split(" ");let lines=[n];
+    if(n.length>13&&w.length>1){const h=Math.ceil(w.length/2);lines=[w.slice(0,h).join(" "),w.slice(h).join(" ")]}
+    const H=lines.length*16+24,top=sn<-0.5?y0-H:sn>0.5?y0:y0-H/2;
+    const m=M[i].m,v=m&&m[key]!=null?fmt(m[key]):"–";
+    s+=`<text x="${x.toFixed(1)}" text-anchor="${anchor}" font-weight="700" font-size="14" fill="#f3f3f1">`+
+      lines.map((l,j)=>`<tspan x="${x.toFixed(1)}" y="${(top+13+j*16).toFixed(1)}">${l}</tspan>`).join("")+
+      `<tspan x="${x.toFixed(1)}" y="${(top+13+lines.length*16+5).toFixed(1)}" font-size="18">${v}</tspan></text>`;
+  });
+  $("svg").innerHTML=s;
+}
+
+function render(){
+  const M=MK.map(n=>({n,m:RAW[n]?metrics(RAW[n]):null}));
+  radar(M,$("metric").value);
+  const by=Object.fromEntries(M.map(x=>[x.n,x.m]));
+  let h="";
+  for(const[gn,list]of GROUPS){
+    h+=`<tr class="gh"><td colspan="6">${gn}</td></tr>`;
+    for(const n of list){const m=by[n];
+      h+=m?`<tr><td>${n}</td><td>${fmt(m.pre)}</td><td>${fmt(m.post)}</td><td>${fmt(m.h7)}</td><td><b>${fmt(m.comp)}</b></td><td><span class="chip G-${m.grade==="–"?"x":m.grade}">${m.grade}</span></td></tr>`
+        :`<tr><td>${n}</td><td colspan="5" style="color:var(--mute)">Tab tidak terbaca</td></tr>`}
+  }
+  $("rows").innerHTML=h;
+  const ok=M.filter(x=>x.m&&x.m.comp!=null);let g="–";
+  if(ok.length){const avg=ok.reduce((s,x)=>s+x.m.comp,0)/ok.length;g=grade(avg,ok.some(x=>x.m.h7!=null));
+    $("oN").textContent=`Komposit rata-rata ${fmt(avg)} / 100 · ${ok.length} dari 9 mata kuliah sudah punya Post-test`}
+  else $("oN").textContent="Belum ada Post-test yang terisi";
+  $("oG").textContent=g;$("stamp").style.setProperty("--g",g==="–"?"var(--x)":`var(--${g})`);
+}
+
+function setStatus(t,e){$("st").textContent=t;$("statusbar").className="status"+(e?" err":"")}
+const jam=()=>new Date().toLocaleTimeString("id-ID");
+function parseSrc(v){
+  v=v.trim();if(!v)return;
+  if(v.includes("script.google.com")){SUMBER.gasUrl=v}
+  else{SUMBER.gasUrl="";const m=v.match(/\/d\/([\w-]+)/);SUMBER.sheetId=m?m[1]:v}
+  try{localStorage.setItem("radar_sumber",JSON.stringify(SUMBER))}catch(e){}
+}
+async function loadSource(){
+  setStatus("Memuat…");
+  if(SUMBER.gasUrl){
+    try{
+      const j=await(await fetch(SUMBER.gasUrl,{cache:"no-store"})).json();let got=0;
+      for(const n of MK){const s=j[n]?summarize(j[n]):null;if(s){RAW[n]=s;got++}else delete RAW[n]}
+      render();setStatus(`Terhubung (Apps Script): ${got}/9 tab terbaca pukul ${jam()}`,got<9);
+    }catch(e){setStatus("Apps Script gagal. Deploy sebagai Aplikasi web dengan akses 'Siapa saja'.",true)}
+    return;
+  }
+  const errs=[];let got=0;
+  await Promise.all(MK.map(async n=>{
+    try{
+      const r=await fetch(`https://docs.google.com/spreadsheets/d/${SUMBER.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(n)}`,{cache:"no-store"});
+      if(!r.ok)throw 0;const t=await r.text();if(t.trim().startsWith("<"))throw 0;
+      const s=summarize(csv(t));if(!s)throw 0;RAW[n]=s;got++;
+    }catch(e){errs.push(n);delete RAW[n]}
+  }));
+  render();
+  if(!got)setStatus("Gagal terhubung. Ubah ke Google Spreadsheet asli dan bagikan ke publik, atau lihat 'Cara menghubungkan'.",true);
+  else if(errs.length)setStatus(`${got}/9 tab terbaca pukul ${jam()}. Gagal: ${errs.join(", ")}`,true);
+  else setStatus("Terhubung, diperbarui pukul "+jam());
+}
+function setTimer(){clearInterval(timer);if($("auto").checked)timer=setInterval(()=>{if(!watchT)loadSource()},30000)}
+function readWb(buf,label){
+  const wb=XLSX.read(buf,{type:"array"});let got=0;
+  for(const n of MK){const ws=wb.Sheets[n];if(!ws){delete RAW[n];continue}
+    const s=summarize(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}));if(s){RAW[n]=s;got++}}
+  render();setStatus(`${label}: ${got}/9 tab terbaca pukul ${jam()}`,got<9);
+}
+$("btnLoad").onclick=()=>{clearInterval(watchT);watchT=null;parseSrc($("src").value);loadSource()};
+$("src").onkeydown=e=>{if(e.key==="Enter")$("btnLoad").click()};
+$("auto").onchange=setTimer;$("metric").onchange=render;
+$("btnUp").onclick=()=>$("file").click();
+$("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{readWb(await f.arrayBuffer(),"Dari file (tidak realtime)")}catch(x){setStatus("File tidak bisa dibaca",true)}e.target.value=""};
+$("btnWatch").onclick=async()=>{
+  if(!window.showOpenFilePicker){setStatus("Browser tidak mendukung. Pakai Chrome atau Edge di komputer.",true);return}
+  try{
+    const[h]=await showOpenFilePicker({types:[{description:"Excel",accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx"]}}]});
+    clearInterval(watchT);let last=0;
+    const tick=async()=>{try{const f=await h.getFile();if(f.lastModified===last)return;last=f.lastModified;readWb(await f.arrayBuffer(),"Memantau "+f.name)}catch(e){setStatus("File tidak terbaca (ditutup atau dipindah?)",true)}};
+    tick();watchT=setInterval(tick,3000);
+  }catch(e){}
+};
+function field(host,obj,labels,after){
+  for(const k in obj){const l=document.createElement("label");l.textContent=labels[k];
+    const i=document.createElement("input");i.type="number";i.value=obj[k];i.min=0;i.max=100;
+    i.oninput=()=>{obj[k]=+i.value||0;after();render()};host.append(l,i)}
+}
+function wsum(){const s=Object.values(W).reduce((a,b)=>a+b,0);$("wsum").textContent="Total bobot: "+s+(s===100?"":" (disarankan 100, tetap dinormalkan)")}
+field($("wts"),W,WL,wsum);field($("ths"),T,{S:"Batas S (≥)",A:"Batas A (≥)",B:"Batas B (≥)",C:"Batas C (≥)"},()=>{});
+$("src").value=SUMBER.gasUrl||SUMBER.sheetId;
+wsum();render();setTimer();loadSource();
+</script>
+</body>
+</html>
